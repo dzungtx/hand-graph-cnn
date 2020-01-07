@@ -10,6 +10,7 @@ from __future__ import unicode_literals
 
 import argparse
 import os.path as osp
+import time
 import torch
 
 from hand_shape_pose.config import cfg
@@ -46,9 +47,6 @@ def main():
 
     output_dir = osp.join(cfg.EVAL.SAVE_DIR, args.config_file)
     mkdir(output_dir)
-    logger = setup_logger("hand_shape_pose_inference",
-                          output_dir, filename='eval-' + get_logger_filename())
-    logger.info(cfg)
 
     # 1. Load network model
     model = ShapePoseNetwork(cfg, output_dir)
@@ -70,9 +68,10 @@ def main():
     model.eval()
     results_pose_cam_xyz = {}
     cpu_device = torch.device("cpu")
-    logger.info("Evaluate on {} frames:".format(len(dataset_val)))
+
     for i, batch in enumerate(data_loader_val):
         images, cam_params, bboxes, pose_roots, pose_scales, image_ids = batch
+
         images, cam_params, bboxes, pose_roots, pose_scales = \
             images.to(device), cam_params.to(device), bboxes.to(
                 device), pose_roots.to(device), pose_scales.to(device)
@@ -83,26 +82,14 @@ def main():
             est_pose_uv = [o.to(cpu_device) for o in est_pose_uv]
             est_pose_cam_xyz = [o.to(cpu_device) for o in est_pose_cam_xyz]
 
-        results_pose_cam_xyz.update(
-            {img_id.item(): result for img_id, result in zip(image_ids, est_pose_cam_xyz)})
+        results_pose_cam_xyz.update({img_id.item(): result for img_id, result in zip(image_ids, est_pose_cam_xyz)})
 
-        if i % cfg.EVAL.PRINT_FREQ == 0:
-            # 4. evaluate pose estimation
-            avg_est_error = dataset_val.evaluate_pose(
-                results_pose_cam_xyz, save_results=False)  # cm
-            msg = 'Evaluate: [{0}/{1}]\t' 'Average pose estimation error: {2:.2f} (mm)'.format(
-                len(results_pose_cam_xyz), len(dataset_val), avg_est_error * 10.0)
-            logger.info(msg)
-
-            # 5. visualize mesh and pose estimation
-            if cfg.EVAL.SAVE_BATCH_IMAGES_PRED:
-                file_name = '{}_{}.jpg'.format(osp.join(output_dir, 'pred'), i)
-                logger.info("Saving image: {}".format(file_name))
-                save_batch_image_with_mesh_joints(mesh_renderer, images.to(cpu_device), cam_params.to(cpu_device),
-                                                  bboxes.to(
-                                                      cpu_device), est_mesh_cam_xyz, est_pose_uv,
-                                                  est_pose_cam_xyz, file_name)
-        break
+        if cfg.EVAL.SAVE_BATCH_IMAGES_PRED:
+            file_name = '{}_{}.jpg'.format(osp.join(output_dir, 'pred'), i)
+            print("Saving image: {}".format(file_name))
+            save_batch_image_with_mesh_joints(mesh_renderer, images.to(cpu_device), cam_params.to(cpu_device),
+                                              bboxes.to(cpu_device), est_mesh_cam_xyz, est_pose_uv,
+                                              est_pose_cam_xyz, file_name)
 
 
 if __name__ == "__main__":

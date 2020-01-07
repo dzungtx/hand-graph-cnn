@@ -1,6 +1,7 @@
 # Copyright (c) Liuhao Ge. All Rights Reserved.
+from .random import Random
 from .real_world_testset import RealWorldTestSet
 from .STB_dataset import STBDataset
 
 
-__all__ = ["RealWorldTestSet", "STBDataset"]
+__all__ = ["RealWorldTestSet", "STBDataset", "Random"]

@@ -12,6 +12,9 @@ import os
 class DatasetCatalog(object):
     DATA_DIR = "data"
     DATASETS = {
+        "random": {
+            "root_dir": "random",
+        },
         "real_world_testset": {
             "root_dir": "real_world_testset",
             "param_file": "real_world_testset/params.mat",
@@ -38,6 +41,16 @@ class DatasetCatalog(object):
             )
             return dict(
                 factory="RealWorldTestSet",
+                args=args,
+            )
+        elif name == "random":
+            data_dir = DatasetCatalog.DATA_DIR
+            attrs = DatasetCatalog.DATASETS[name]
+            args = dict(
+                root=os.path.join(data_dir, attrs["root_dir"]),
+            )
+            return dict(
+                factory="Random",
                 args=args,
             )
         elif "STB" in name:
