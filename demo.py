@@ -70,7 +70,9 @@ def main():
     cpu_device = torch.device("cpu")
 
     for i, batch in enumerate(data_loader_val):
-        images, cam_params, bboxes, pose_roots, pose_scales, image_ids = batch
+        t1 = time.time()
+
+        images, cam_params, bboxes, pose_roots, pose_scales, image_ids, image_names = batch
 
         images, cam_params, bboxes, pose_roots, pose_scales = \
             images.to(device), cam_params.to(device), bboxes.to(
@@ -82,13 +84,19 @@ def main():
             est_pose_uv = [o.to(cpu_device) for o in est_pose_uv]
             est_pose_cam_xyz = [o.to(cpu_device) for o in est_pose_cam_xyz]
 
-        results_pose_cam_xyz.update({img_id.item(): result for img_id, result in zip(image_ids, est_pose_cam_xyz)})
+        t2 = time.time()
+        print(round(t2 - t1, 2))
+
+        results_pose_cam_xyz.update(
+            {img_id.item(): result for img_id, result in zip(image_ids, est_pose_cam_xyz)})
 
         if cfg.EVAL.SAVE_BATCH_IMAGES_PRED:
-            file_name = '{}_{}.jpg'.format(osp.join(output_dir, 'pred'), i)
+            file_name = '{}_{}.jpg'.format(
+                osp.join(output_dir, 'pred'), '-'.join(['.'.join(name.split('.')[:-1]) for name in image_names]))
             print("Saving image: {}".format(file_name))
             save_batch_image_with_mesh_joints(mesh_renderer, images.to(cpu_device), cam_params.to(cpu_device),
-                                              bboxes.to(cpu_device), est_mesh_cam_xyz, est_pose_uv,
+                                              bboxes.to(
+                                                  cpu_device), est_mesh_cam_xyz, est_pose_uv,
                                               est_pose_cam_xyz, file_name)
 
 
