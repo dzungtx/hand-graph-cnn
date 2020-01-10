@@ -22,3 +22,6 @@ _ext
 
 # project dirs
 /output
+*.pickle
+*.hdf5
+hand_classifier/model

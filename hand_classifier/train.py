@@ -1,68 +1,62 @@
+import config as cf
 import numpy as np
+import json
 import pickle
-import random
 import tensorflow as tf
 from tensorflow.compat.v1 import InteractiveSession
 from tensorflow.compat.v1 import ConfigProto
 
+from utils.hdf5datasetgenerator import HDF5DatasetGenerator
 from sklearn import svm
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report
 from sklearn.preprocessing import LabelBinarizer
 from tensorflow.keras.applications import MobileNetV2
-from tensorflow.keras.optimizers import SGD
-
-WIDTH = 224
-HEIGHT = 224
-CHANNEL = 3
-CLASSES = ['hand', 'non-hand']
+from tensorflow.keras.optimizers import SGD, Adam
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from utils.simplepreprocessor import SimplePreprocessor
+from utils.patchpreprocessor import PatchPreprocessor
+from utils.meanpreprocessor import MeanPreprocessor
 
 config = ConfigProto()
 config.gpu_options.allow_growth = True
 session = InteractiveSession(config=config)
 
+
 def train():
-    le = LabelBinarizer()
-    le.fit(CLASSES)
+    aug = ImageDataGenerator(rotation_range=20, zoom_range=0.1,
+                             width_shift_range=0.1, height_shift_range=0.1, shear_range=0.1,
+                             horizontal_flip=True, fill_mode="nearest")
 
-    with open('train1.pickle', 'rb') as f:
-        train = pickle.load(f)
-    random.shuffle(train)
-    x_train = np.zeros((len(train), WIDTH, HEIGHT, CHANNEL))
-    y_train = np.zeros((len(train), 1))
-    for i, sample in enumerate(train):
-        x_train[i] = sample['image']
-        y_train[i] = le.transform([sample['label']])
-    x_train = x_train / 255.0
-    y_train = np.hstack([y_train, 1 - y_train])
+    means = json.loads(open(cf.DATASET_MEAN).read())
 
-    with open('test1.pickle', 'rb') as f:
-        test = pickle.load(f)
-    random.shuffle(test)
-    x_test = np.zeros((len(test), WIDTH, HEIGHT, CHANNEL))
-    y_test = np.zeros((len(test), 1))
-    for i, sample in enumerate(test):
-        x_test[i] = sample['image']
-        y_test[i] = le.transform([sample['label']])
-    x_test = x_test / 255.0
-    y_test = np.hstack([y_test, 1 - y_test])
+    sp = SimplePreprocessor(cf.WIDTH, cf.HEIGHT)
+    pp = PatchPreprocessor(cf.WIDTH, cf.HEIGHT)
+    mp = MeanPreprocessor(means["R"], means["G"], means["B"])
 
-    epochs_num = 100
-    opt = SGD(lr=0.01, decay=0.01/epochs_num)
+    train_gen = HDF5DatasetGenerator(cf.TRAIN_HDF5, cf.BATCH_SIZE, classes=cf.CLASSES_N)
+    val_gen = HDF5DatasetGenerator(cf.VAL_HDF5, cf.BATCH_SIZE, classes=cf.CLASSES_N)
+
+    epochs_num = 1
+    # opt = SGD(lr=0.01, momentum=0.9, decay=0.01/epochs_num)
+    opt = Adam(lr=1e-3)
     model = MobileNetV2(
-        include_top=True, weights=None, input_shape=(WIDTH, HEIGHT, CHANNEL), classes=len(CLASSES))
+        include_top=True, weights=None, input_shape=(cf.WIDTH, cf.HEIGHT, cf.CHANNEL), classes=cf.CLASSES_N)
     model.compile(loss="categorical_crossentropy",
                   optimizer=opt, metrics=["accuracy"])
-    model.fit(x_train, y_train, validation_data=(x_test, y_test),
-              batch_size=16, epochs=epochs_num, verbose=1)
 
-    # preds = model.predict(x_test)
-    # print(preds)
-    # result = classification_report(y_test[:, 0], preds[:, 0], target_names=CLASSES)
-    # print(result)
+    model.fit(train_gen.generator(),
+              steps_per_epoch=train_gen.numImages // cf.BATCH_SIZE,
+              validation_data=val_gen.generator(),
+              validation_steps=val_gen.numImages // cf.BATCH_SIZE,
+              epochs=epochs_num,
+              max_queue_size=10,
+              callbacks=[], verbose=1)
 
-    with open('model.pickle', 'wb') as f:
-        pickle.dump(model, f)
+    model.save(cf.MODEL_PATH)
+
+    train_gen.close()
+    val_gen.close()
 
 
 if __name__ == "__main__":
