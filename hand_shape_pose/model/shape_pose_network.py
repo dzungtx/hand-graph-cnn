@@ -69,17 +69,49 @@ class ShapePoseNetwork(nn.Module):
         self.net_mesh_pose.graph_L = self.graph_L
         self.graph_mask = self.graph_mask.to(*args, **kwargs)
 
-    def forward(self, images, cam_param, bbox, pose_root, pose_scale):
-        """
-        :param images: B x H x W x C
-        :param cam_param: B x 4, [fx, fy, u0, v0]
-        :param bbox: B x 4, bounding box in the original image, [x, y, w, h]
-        :param pose_root: B x 3
-        :param pose_scale: B
-        :return:
-        """
+    # def forward(self, images, cam_param, bbox, pose_root, pose_scale):
+    #     """
+    #     :param images: B x H x W x C
+    #     :param cam_param: B x 4, [fx, fy, u0, v0]
+    #     :param bbox: B x 4, bounding box in the original image, [x, y, w, h]
+    #     :param pose_root: B x 3
+    #     :param pose_scale: B
+    #     :return:
+    #     """
+    #     num_sample = images.shape[0]
+    #     root_depth = pose_root[:, -1]
+    #     images = BHWC_to_BCHW(images)  # B x C x H x W
+    #     images = normalize_image(images)
+
+    #     # 1. Heat-map estimation
+    #     est_hm_list, encoding = self.net_hm(images)
+
+    #     # 2. Mesh estimation
+    #     # 2.1 Mesh uvd estimation
+    #     est_mesh_uvd = self.net_feat_mesh(est_hm_list, encoding)  # B x V x 3
+    #     est_mesh_uvd = est_mesh_uvd * self.graph_mask.unsqueeze(0).expand_as(est_mesh_uvd)  # B x V x 3
+    #     # 2.2 convert to mesh xyz in camera coordiante system
+    #     est_mesh_cam_xyz = uvd2xyz(est_mesh_uvd, cam_param, bbox, root_depth, pose_scale)  # B x V x 3
+    #     est_mesh_cam_xyz = est_mesh_cam_xyz * self.graph_mask.unsqueeze(0).expand_as(est_mesh_cam_xyz)  # B x V x 3
+
+    #     # 3. Pose estimation
+    #     est_pose_rel_depth = self.net_mesh_pose(est_mesh_uvd).view(num_sample, -1, 1)  # B x (K-1) x 1
+
+    #     # combine heat-map estimation results to compute pose xyz in camera coordiante system
+    #     est_pose_uv = compute_uv_from_heatmaps(est_hm_list[-1], images.shape[2:4])  # B x K x 3
+    #     est_pose_uvd = torch.cat((est_pose_uv[:, 1:, :2],
+    #                               est_pose_rel_depth[:, :, -1].unsqueeze(-1)), -1)  # B x (K-1) x 3
+    #     est_pose_uvd[:, :, 0] = est_pose_uvd[:, :, 0] / float(images.shape[2])
+    #     est_pose_uvd[:, :, 1] = est_pose_uvd[:, :, 1] / float(images.shape[3])
+    #     est_pose_cam_xyz = uvd2xyz(est_pose_uvd, cam_param, bbox, root_depth, pose_scale)  # B x (K-1) x 3
+    #     est_pose_cam_xyz = torch.cat((pose_root.unsqueeze(1), est_pose_cam_xyz), 1)  # B x K x 3
+
+    #     return est_mesh_cam_xyz[:, self.graph_perm_reverse[:self.hand_tri.max()+1], :], \
+    #            est_pose_uv[:, :, :2], \
+    #            est_pose_cam_xyz
+
+    def forward(self, images):
         num_sample = images.shape[0]
-        root_depth = pose_root[:, -1]
         images = BHWC_to_BCHW(images)  # B x C x H x W
         images = normalize_image(images)
 
@@ -89,23 +121,19 @@ class ShapePoseNetwork(nn.Module):
         # 2. Mesh estimation
         # 2.1 Mesh uvd estimation
         est_mesh_uvd = self.net_feat_mesh(est_hm_list, encoding)  # B x V x 3
-        est_mesh_uvd = est_mesh_uvd * self.graph_mask.unsqueeze(0).expand_as(est_mesh_uvd)  # B x V x 3
-        # 2.2 convert to mesh xyz in camera coordiante system
-        est_mesh_cam_xyz = uvd2xyz(est_mesh_uvd, cam_param, bbox, root_depth, pose_scale)  # B x V x 3
-        est_mesh_cam_xyz = est_mesh_cam_xyz * self.graph_mask.unsqueeze(0).expand_as(est_mesh_cam_xyz)  # B x V x 3
+        est_mesh_uvd = est_mesh_uvd * \
+            self.graph_mask.unsqueeze(0).expand_as(est_mesh_uvd)  # B x V x 3
 
         # 3. Pose estimation
-        est_pose_rel_depth = self.net_mesh_pose(est_mesh_uvd).view(num_sample, -1, 1)  # B x (K-1) x 1
+        est_pose_rel_depth = self.net_mesh_pose(
+            est_mesh_uvd).view(num_sample, -1, 1)  # B x (K-1) x 1
 
         # combine heat-map estimation results to compute pose xyz in camera coordiante system
-        est_pose_uv = compute_uv_from_heatmaps(est_hm_list[-1], images.shape[2:4])  # B x K x 3
+        est_pose_uv = compute_uv_from_heatmaps(
+            est_hm_list[-1], images.shape[2:4])  # B x K x 3
         est_pose_uvd = torch.cat((est_pose_uv[:, 1:, :2],
                                   est_pose_rel_depth[:, :, -1].unsqueeze(-1)), -1)  # B x (K-1) x 3
         est_pose_uvd[:, :, 0] = est_pose_uvd[:, :, 0] / float(images.shape[2])
         est_pose_uvd[:, :, 1] = est_pose_uvd[:, :, 1] / float(images.shape[3])
-        est_pose_cam_xyz = uvd2xyz(est_pose_uvd, cam_param, bbox, root_depth, pose_scale)  # B x (K-1) x 3
-        est_pose_cam_xyz = torch.cat((pose_root.unsqueeze(1), est_pose_cam_xyz), 1)  # B x K x 3
 
-        return est_mesh_cam_xyz[:, self.graph_perm_reverse[:self.hand_tri.max()+1], :], \
-               est_pose_uv[:, :, :2], \
-               est_pose_cam_xyz
+        return est_pose_uv[:, :, :2]

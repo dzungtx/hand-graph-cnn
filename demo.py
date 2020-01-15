@@ -74,6 +74,12 @@ def main():
 
         images, cam_params, bboxes, pose_roots, pose_scales, image_ids, image_names = batch
 
+        print(images.shape)
+        print(cam_params.shape)
+        print(bboxes.shape)
+        print(pose_roots.shape)
+        print(pose_scales.shape)
+
         images, cam_params, bboxes, pose_roots, pose_scales = \
             images.to(device), cam_params.to(device), bboxes.to(
                 device), pose_roots.to(device), pose_scales.to(device)

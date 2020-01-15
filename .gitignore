@@ -24,4 +24,4 @@ _ext
 /output
 *.pickle
 *.hdf5
-hand_classifier/model
+tmp/
