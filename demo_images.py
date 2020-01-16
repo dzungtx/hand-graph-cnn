@@ -35,16 +35,18 @@ def main():
     # 2. Inference
     model.eval()
 
-    image = torch.from_numpy(cv2.imread('data/random/images/1.jpg'))
+    img = cv2.imread('data/random/images/1.jpg')
 
     with torch.no_grad():
-        est_pose_uv = model(image.unsqueeze(0))
+        est_pose_uv = model.cacl_pose(torch.from_numpy(img).unsqueeze(0))
 
-    save_image(image, est_pose_uv,
-               'output/configs/eval_random.yaml/pred_1.jpg')
+    pose_uv = est_pose_uv[0].numpy()
+
+    save_image(img, pose_uv,
+               'output/configs/eval_random.yaml/1.jpg')
 
 
-def save_image(image, est_pose_uv, file_name, padding=2):
+def save_image(image, pose_uv, file_name, padding=2):
     print("Saving image: {}".format(file_name))
 
     image_height = image.shape[0]
@@ -53,8 +55,6 @@ def save_image(image, est_pose_uv, file_name, padding=2):
 
     grid_image = np.zeros((image_height + padding, num_column * (image_width + padding), 3),
                           dtype=np.uint8)
-
-    pose_uv = est_pose_uv[0].numpy()
 
     skeleton_overlay = draw_2d_skeleton(image, pose_uv)
 

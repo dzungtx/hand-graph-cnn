@@ -79,6 +79,7 @@ def draw_2d_skeleton(image, pose_uv):
     root_ind = 0
 
     for joint_ind in range(pose_uv.shape[0]):
+    # for joint_ind in [0, 1, 5, 9, 13, 17]:
         joint = pose_uv[joint_ind, 0].astype('int32'), pose_uv[joint_ind, 1].astype('int32')
         cv2.circle(
             skeleton_overlay, joint,
