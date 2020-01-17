@@ -38,7 +38,7 @@ def main():
     img = cv2.imread('data/random/images/1.jpg')
 
     with torch.no_grad():
-        est_pose_uv = model.cacl_pose(torch.from_numpy(img).unsqueeze(0))
+        est_pose_uv = model.cacl_2d_pose(torch.from_numpy(img).unsqueeze(0))
 
     pose_uv = est_pose_uv[0].numpy()
 

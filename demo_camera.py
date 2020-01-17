@@ -76,7 +76,7 @@ def init_hand_shape_pose_model(cfg):
 
 def extract_hand_pose(model, image):
     with torch.no_grad():
-        est_pose_uv = model.cacl_pose(
+        est_pose_uv = model.cacl_2d_pose(
             torch.from_numpy(image).unsqueeze(0).to(device))
     return est_pose_uv[0].cpu().numpy()
 
