@@ -151,4 +151,4 @@ class ShapePoseNetwork(nn.Module):
         est_pose_uvd[:, :, 0] = est_pose_uvd[:, :, 0] / float(images.shape[2])
         est_pose_uvd[:, :, 1] = est_pose_uvd[:, :, 1] / float(images.shape[3])
 
-        return est_pose_uv
+        return est_pose_uvd
