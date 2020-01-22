@@ -110,8 +110,10 @@ class ShapePoseNetwork(nn.Module):
             est_hm_list[-1], images.shape[2:4])  # B x K x 3
         est_pose_uvd = torch.cat((est_pose_uv[:, 1:, :2],
                                   est_pose_rel_depth[:, :, -1].unsqueeze(-1)), -1)  # B x (K-1) x 3
+
         est_pose_uvd[:, :, 0] = est_pose_uvd[:, :, 0] / float(images.shape[2])
         est_pose_uvd[:, :, 1] = est_pose_uvd[:, :, 1] / float(images.shape[3])
+
         est_pose_cam_xyz = uvd2xyz(
             est_pose_uvd, cam_param, bbox, root_depth, pose_scale)  # B x (K-1) x 3
         est_pose_cam_xyz = torch.cat(

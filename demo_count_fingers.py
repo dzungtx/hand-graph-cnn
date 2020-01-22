@@ -22,7 +22,7 @@ WINDOW_SIZE = 7
 def main():
     global device
 
-    parser = argparse.ArgumentParser(description="Hand gesture recognization")
+    parser = argparse.ArgumentParser(description="Hand gesture recognition")
     parser.add_argument("--camera", type=int, default=0)
     args = parser.parse_args()
 

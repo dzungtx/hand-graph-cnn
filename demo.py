@@ -55,30 +55,28 @@ def main():
     cpu_device = torch.device("cpu")
 
     cam_params = torch.from_numpy(
-        np.array([123, 123, 10, 10])).unsqueeze(0).to(cpu_device)
+        np.array([923.648, 923.759, 640.047, 362.336])).unsqueeze(0).to(cpu_device)
 
     bboxes = torch.from_numpy(
-        np.array([80., 64., 493., 493.])).unsqueeze(0).to(cpu_device)
+        np.array([380., 164., 493., 493.])).unsqueeze(0).to(cpu_device)
 
     pose_roots = torch.from_numpy(
         np.array([0.41856557, 11.017581, 42.429573])).unsqueeze(0).to(cpu_device)
 
-    pose_scales = (torch.ones((1,)) * 2.0).to(cpu_device)
+    pose_scales = (torch.ones((1,)) * 5.0).to(cpu_device)
 
-    img = cv2.imread('data/random/images/1.jpg')
+    img = cv2.imread('data/random/images/3.jpg')
     images = torch.from_numpy(img).unsqueeze(0).to(cpu_device)
 
     with torch.no_grad():
-        est_mesh_cam_xyz, est_pose_uv, est_pose_cam_xyz = \
-            model(images, cam_params, bboxes, pose_roots, pose_scales)
+        est_mesh_cam_xyz, est_pose_uv, est_pose_cam_xyz = model(
+            images, cam_params, bboxes, pose_roots, pose_scales)
         est_mesh_cam_xyz = [o.to(cpu_device) for o in est_mesh_cam_xyz]
         est_pose_uv = [o.to(cpu_device) for o in est_pose_uv]
         est_pose_cam_xyz = [o.to(cpu_device) for o in est_pose_cam_xyz]
 
-    print(est_pose_cam_xyz[0])
-
     if cfg.EVAL.SAVE_BATCH_IMAGES_PRED:
-        file_name = 'output/configs/eval_random.yaml/full_1.jpg'
+        file_name = 'output/configs/eval_random.yaml/full_3.jpg'
         print("Saving image: {}".format(file_name))
         save_image(mesh_renderer, images.to(cpu_device), cam_params.to(cpu_device),
                    bboxes.to(cpu_device), est_mesh_cam_xyz, est_pose_uv, est_pose_cam_xyz, file_name)
@@ -92,8 +90,8 @@ def save_image(mesh_renderer, batch_images, cam_params, bboxes,
     image_width = batch_images.shape[2]
     num_column = 4
 
-    grid_image = np.zeros((num_images * (image_height + padding), num_column * (image_width + padding), 3),
-                          dtype=np.uint8)
+    grid_image = np.zeros((num_images * (image_height + padding),
+                           num_column * (image_width + padding), 3), dtype=np.uint8)
 
     for id_image in range(num_images):
         image = batch_images[id_image].numpy()

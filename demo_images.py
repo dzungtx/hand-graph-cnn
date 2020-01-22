@@ -13,7 +13,7 @@ from scipy.sparse.linalg.interface import LinearOperator
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Hand gesture recognization")
+    parser = argparse.ArgumentParser(description="Hand gesture recognition")
     parser.add_argument(
         "--config-file",
         default="configs/eval_random.yaml",
